@@ -38,6 +38,53 @@ export async function POST(req: Request) {
       );
     }
 
+    // Kiểm tra số lượng phòng khả dụng trong khoảng ngày
+    const { roomId, startDate, endDate } = booking;
+
+    // Lấy thông tin phòng để kiểm tra quantity
+    const room = await prisma.room.findUnique({
+      where: { id: roomId },
+    });
+
+    if (!room) {
+      return NextResponse.json(
+        { message: "Không tìm thấy phòng" },
+        { status: 404 }
+      );
+    }
+
+    // Kiểm tra các booking đã thanh toán trong khoảng ngày
+    const conflictingBookings = await prisma.booking.findMany({
+      where: {
+        roomId: roomId,
+        paymentStatus: true,
+        OR: [
+          {
+            AND: [
+              { startDate: { lte: new Date(endDate) } },
+              { endDate: { gte: new Date(startDate) } },
+            ],
+          },
+        ],
+      },
+    });
+
+    // Nếu quantity là 1 và đã có booking trùng, từ chối
+    if (room.quantity === 1 && conflictingBookings.length > 0) {
+      return NextResponse.json(
+        { message: "Phòng đã được đặt trong khoảng thời gian này" },
+        { status: 400 }
+      );
+    }
+
+    // Nếu quantity > 1, kiểm tra số lượng booking trùng
+    if (conflictingBookings.length >= room.quantity) {
+      return NextResponse.json(
+        { message: "Không còn phòng trống trong khoảng thời gian này" },
+        { status: 400 }
+      );
+    }
+
     let foundBooking;
 
     if (payment_intent_id && payment_intent_id.trim() !== "") {

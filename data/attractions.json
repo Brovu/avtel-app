@@ -1,0 +1,110 @@
+{
+  "Đà Nẵng": [
+    {
+      "name": "Bà Nà Hills",
+      "description": "Tham quan khu vui chơi và Cầu Vàng nổi tiếng.",
+      "type": "sightseeing"
+    },
+    {
+      "name": "Bãi biển Mỹ Khê",
+      "description": "Tắm biển và thư giãn tại bãi biển đẹp nhất Đà Nẵng.",
+      "type": "beach"
+    },
+    {
+      "name": "Ngũ Hành Sơn",
+      "description": "Khám phá các hang động và chùa chiền tại Ngũ Hành Sơn.",
+      "type": "sightseeing"
+    },
+    {
+      "name": "Chợ Cồn",
+      "description": "Thưởng thức ẩm thực địa phương và mua sắm đặc sản.",
+      "type": "shopping"
+    },
+    {
+      "name": "Cầu Rồng",
+      "description": "Dạo đêm bên sông Hàn và xem cầu Rồng phun lửa (cuối tuần).",
+      "type": "sightseeing"
+    },
+    {
+      "name": "Đỉnh Bàn Cờ",
+      "description": "Ngắm toàn cảnh thành phố từ đỉnh núi Sơn Trà.",
+      "type": "sightseeing"
+    }
+  ],
+  "Nha Trang": [
+    {
+      "name": "Biển Nha Trang",
+      "description": "Thư giãn và tắm biển tại bãi biển Nha Trang nổi tiếng.",
+      "type": "beach"
+    },
+    {
+      "name": "VinWonders Nha Trang",
+      "description": "Trải nghiệm công viên giải trí với nhiều trò chơi hấp dẫn.",
+      "type": "sightseeing"
+    },
+    {
+      "name": "Tháp Bà Ponagar",
+      "description": "Tham quan di tích lịch sử văn hóa Chăm Pa.",
+      "type": "sightseeing"
+    },
+    {
+      "name": "Chợ Đêm Nha Trang",
+      "description": "Mua sắm và thưởng thức hải sản tươi ngon.",
+      "type": "shopping"
+    },
+    {
+      "name": "Hòn Mun",
+      "description": "Lặn ngắm san hô tại khu bảo tồn biển Hòn Mun.",
+      "type": "beach"
+    }
+  ],
+  "Hà Nội": [
+    {
+      "name": "Hồ Hoàn Kiếm",
+      "description": "Tham quan Hồ Hoàn Kiếm và Đền Ngọc Sơn.",
+      "type": "sightseeing"
+    },
+    {
+      "name": "Văn Miếu - Quốc Tử Giám",
+      "description": "Khám phá di tích lịch sử và văn hóa lâu đời.",
+      "type": "sightseeing"
+    },
+    {
+      "name": "Phố cổ Hà Nội",
+      "description": "Dạo phố cổ và mua sắm tại chợ đêm.",
+      "type": "shopping"
+    },
+    {
+      "name": "Nhà hát múa rối Thăng Long",
+      "description": "Xem múa rối nước truyền thống Việt Nam.",
+      "type": "sightseeing"
+    }
+  ],
+  "Hồ Chí Minh": [
+    {
+      "name": "Dinh Độc Lập",
+      "description": "Tham quan Dinh Độc Lập và tìm hiểu lịch sử.",
+      "type": "sightseeing"
+    },
+    {
+      "name": "Chợ Bến Thành",
+      "description": "Mua sắm quà lưu niệm và đặc sản tại chợ Bến Thành.",
+      "type": "shopping"
+    },
+    {
+      "name": "Phố Tây Bùi Viện",
+      "description": "Thưởng thức ẩm thực đường phố và trải nghiệm cuộc sống về đêm.",
+      "type": "dining"
+    },
+    {
+      "name": "Phố đi bộ Nguyễn Huệ",
+      "description": "Dạo chơi và chụp ảnh tại phố đi bộ Nguyễn Huệ.",
+      "type": "sightseeing"
+    },
+    {
+      "name": "Địa đạo Củ Chi",
+      "description": "Tham quan địa đạo Củ Chi và tìm hiểu lịch sử chiến tranh.",
+      "type": "sightseeing"
+    }
+  ]
+}

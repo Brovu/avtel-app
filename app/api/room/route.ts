@@ -1,13 +1,16 @@
 import prisma from "@/lib/prisma";
-import { auth } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server"; // Sử dụng /server để rõ ràng
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    console.log("Received room data:", body); // Log dữ liệu nhận được
+    console.log("Received room data:", body);
 
-    const { userId } = auth();
+    // Sử dụng await để lấy userId từ auth()
+    const { userId } = await auth();
+    console.log("User ID from auth:", userId);
+
     if (!userId) {
       console.log("No userId found in auth");
       return new NextResponse(JSON.stringify({ message: "Unauthorized" }), {
@@ -87,7 +90,7 @@ export async function POST(req: Request) {
         roomService: body.roomService || false,
         TV: body.TV || false,
         balcony: body.balcony || false,
-        freeWiFi: body.freeWifi || false,
+        freeWiFi: body.freeWiFi || false, // Sửa freeWifi thành freeWiFi
         cityView: body.cityView || false,
         oceanView: body.oceanView || false,
         forestView: body.forestView || false,
@@ -100,12 +103,13 @@ export async function POST(req: Request) {
 
     console.log("Room created successfully:", room);
     return NextResponse.json(room);
-  } catch (error) {
-    console.error("Error at /api/room POST:", error);
+  } catch (error: any) {
+    console.error("Error at /api/room POST:", error.message);
+    console.error("Full error:", error);
     return new NextResponse(
       JSON.stringify({
         message: "Internal Server Error",
-        error: String(error),
+        error: error.message,
       }),
       { status: 500 }
     );

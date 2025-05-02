@@ -5,22 +5,73 @@ import { HotelWithRooms } from "./AddHotelForm";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import AmenityItem from "../AmenityItem";
-import { Dumbbell, MapPin, Waves } from "lucide-react";
+import { Dumbbell, MapPin, Waves, Heart } from "lucide-react";
 import useLocation from "@/hooks/useLocation";
 import { Button } from "../ui/button";
+import { useState } from "react";
+import { toast } from "sonner";
 
-// Hàm chuyển đổi VND sang USD (tỷ giá có thể cập nhật từ API)
 const convertVNDtoUSD = (vndAmount: number) => {
-  const exchangeRate = 0.0000417; // 1 VND ≈ 0.0000417 USD
-  return (vndAmount * exchangeRate).toFixed(2); // Làm tròn 2 số thập phân
+  const exchangeRate = 0.0000417;
+  return (vndAmount * exchangeRate).toFixed(2);
 };
 
-const HotelCard = ({ hotel }: { hotel: HotelWithRooms }) => {
+const calculateRatingStats = (reviews: { rating: number }[]) => {
+  if (!reviews || reviews.length === 0) {
+    return { averageRating: 0, totalReviews: 0 };
+  }
+
+  const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+  const averageRating = (totalRating / reviews.length).toFixed(1);
+  const totalReviews = reviews.length;
+
+  return { averageRating: parseFloat(averageRating), totalReviews };
+};
+
+const HotelCard = ({
+  hotel,
+}: {
+  hotel: HotelWithRooms & { isFavorited: boolean };
+}) => {
   const pathname = usePathname();
   const isMyHotels = pathname.includes("my-hotels");
   const router = useRouter();
   const { getCountryByCode } = useLocation();
   const country = getCountryByCode(hotel.country);
+
+  const [isFavorited, setIsFavorited] = useState(hotel.isFavorited);
+
+  const handleFavoriteClick = async () => {
+    try {
+      const response = await fetch("/api/favorite", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ hotelId: hotel.id }),
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        setIsFavorited(data.isFavorited);
+        toast.success(
+          data.isFavorited
+            ? "Đã thêm vào danh sách yêu thích"
+            : "Đã xóa khỏi danh sách yêu thích"
+        );
+      } else {
+        throw new Error(data.message || "Something went wrong");
+      }
+    } catch (error: any) {
+      toast.error("Lỗi: " + error.message);
+    }
+  };
+
+  const formattedPrice = hotel?.rooms[0]?.roomPrice
+    ? hotel.rooms[0].roomPrice.toLocaleString("vi-VN", { currency: "VND" })
+    : "0";
+
+  const { averageRating, totalReviews } = calculateRatingStats(hotel.reviews);
 
   return (
     <div
@@ -30,7 +81,23 @@ const HotelCard = ({ hotel }: { hotel: HotelWithRooms }) => {
         isMyHotels && "cursor-default"
       )}
     >
-      <div className="flex gap-2 bg-background/50 border border-primary/10 rounded-lg">
+      <div className="relative flex gap-2 bg-background/50 border border-primary/10 rounded-lg">
+        {/* Icon trái tim */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation(); // Ngăn sự kiện click lan ra thẻ cha
+            handleFavoriteClick();
+          }}
+          className="absolute top-2 right-2 p-1 rounded-full bg-white/80 hover:bg-white"
+        >
+          <Heart
+            className={cn(
+              "w-5 h-5",
+              isFavorited ? "fill-red-500 text-red-500" : "text-gray-500"
+            )}
+          />
+        </button>
+
         <div className="flex-1 aspect-square overflow-hidden relative w-full h-[210px] rounded-s-lg">
           <Image
             fill
@@ -64,16 +131,36 @@ const HotelCard = ({ hotel }: { hotel: HotelWithRooms }) => {
               </AmenityItem>
             )}
 
+            <div className="mt-2 flex items-center gap-1">
+              {averageRating > 0 ? (
+                <>
+                  <span className="font-semibold text-[13px]">
+                    {averageRating}
+                  </span>
+                  <span className="text-yellow-500">
+                    {"★".repeat(Math.round(averageRating))}
+                  </span>
+                  <span className="text-gray-500 text-[12px]">
+                    ({totalReviews} {totalReviews === 1 ? "review" : "reviews"})
+                  </span>
+                </>
+              ) : (
+                <span className="text-gray-500 text-[12px]">
+                  Chưa có đánh giá
+                </span>
+              )}
+            </div>
+
             <div className="flex items-center justify-between w-full">
               <div className="flex flex-col">
                 {hotel?.rooms[0]?.roomPrice && (
                   <>
                     <div className="font-semibold text-base">
-                      ${convertVNDtoUSD(hotel?.rooms[0].roomPrice)}
+                      ${convertVNDtoUSD(hotel.rooms[0].roomPrice)}
                       <span className="text-xs font-normal ml-1">/ 24hrs</span>
                     </div>
                     <div className="text-xs text-gray-500">
-                      {hotel?.rooms[0].roomPrice.toLocaleString()} VND
+                      {formattedPrice} VND
                     </div>
                   </>
                 )}
@@ -82,12 +169,12 @@ const HotelCard = ({ hotel }: { hotel: HotelWithRooms }) => {
               {isMyHotels && (
                 <Button
                   onClick={(e) => {
-                    e.stopPropagation(); // Ngăn sự kiện click lan ra thẻ cha
+                    e.stopPropagation();
                     router.push(`/hotel/${hotel.id}`);
                   }}
                   variant="outline"
                   size="sm"
-                  className="ml-4 self-end cursor-pointer" // Thêm margin left và căn dưới
+                  className="ml-4 self-end cursor-pointer"
                 >
                   Sửa
                 </Button>

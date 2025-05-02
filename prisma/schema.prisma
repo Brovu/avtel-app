@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,86 +7,184 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id            String         @id // Sử dụng Clerk user ID
+  email         String         @unique
+  name          String?
+  role          Role           @default(CUSTOMER)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @default(now())
+  hotels        Hotel[]        @relation("UserHotels")
+  bookings      Booking[]      @relation("UserBookings")
+  reviews       Review[] // Quan hệ với Review
+  favorites     Favorite[] // Quan hệ với Favorite (danh sách yêu thích)
+  guideBookings GuideBooking[] @relation("UserGuideBookings") // Quan hệ với đặt lịch hướng dẫn viên
+  guideReviews  GuideReview[]  @relation("UserGuideReviews") // Quan hệ với đánh giá hướng dẫn viên
+  localGuides   LocalGuide[]   @relation("UserLocalGuides") // Quan hệ với hướng dẫn viên
+}
+
+enum Role {
+  ADMIN
+  HOTEL_OWNER
+  CUSTOMER
+}
+
 model Hotel {
-  id                  String    @id @default(cuid())
+  id                  String     @id @default(cuid())
   userId              String
-  userEmail           String    @default("")
-  title               String    @db.Text
-  description         String    @db.Text
+  user                User       @relation("UserHotels", fields: [userId], references: [id], onDelete: Cascade)
+  userEmail           String     @default("")
+  title               String     @db.Text
+  description         String     @db.Text
   image               String
   country             String
   state               String
   city                String
-  locationDescription String    @db.Text
-  gym                 Boolean   @default(false)
-  spa                 Boolean   @default(false)
-  bar                 Boolean   @default(false)
-  laundry             Boolean   @default(false)
-  restaurant          Boolean   @default(false)
-  shopping            Boolean   @default(false)
-  freeParking         Boolean   @default(false)
-  bikeRental          Boolean   @default(false)
-  freeWifi            Boolean   @default(false)
-  movieNights         Boolean   @default(false)
-  swimmingPool        Boolean   @default(false)
-  coffeShop           Boolean   @default(false)
-  addAt               DateTime  @default(now())
-  updateAt            DateTime  @default(now())
-  rooms               Room[]    @relation("HotelRooms")
-  bookings            Booking[] @relation("HotelBookings")
+  locationDescription String     @db.Text
+  gym                 Boolean    @default(false)
+  spa                 Boolean    @default(false)
+  bar                 Boolean    @default(false)
+  laundry             Boolean    @default(false)
+  restaurant          Boolean    @default(false)
+  shopping            Boolean    @default(false)
+  freeParking         Boolean    @default(false)
+  bikeRental          Boolean    @default(false)
+  freeWifi            Boolean    @default(false)
+  movieNights         Boolean    @default(false)
+  swimmingPool        Boolean    @default(false)
+  coffeShop           Boolean    @default(false)
+  latitude            Float?
+  longitude           Float?
+  addAt               DateTime   @default(now())
+  updateAt            DateTime   @default(now())
+  rooms               Room[]     @relation("HotelRooms")
+  bookings            Booking[]  @relation("HotelBookings")
+  reviews             Review[] // Quan hệ với Review
+  Favorite            Favorite[]
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hotelId   String
+  hotel     Hotel    @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
 }
 
 model Room {
-  id             String  @id @default(uuid())
-  title          String
-  description    String  @db.Text
-  bedCount       Int     @default(0)
-  guestCount     Int     @default(0)
-  bathroomCount  Int     @default(0)
-  kingBed        Int     @default(0)
-  queenBen       Int     @default(0)
+  id             String    @id @default(cuid())
+  title          String    @db.Text
+  description    String    @db.Text
+  bedCount       Int
+  guestCount     Int
+  bathroomCount  Int
+  kingBed        Int
+  queenBen       Int
   image          String
   breakFastPrice Int
   roomPrice      Int
-  roomService    Boolean @default(false)
-  TV             Boolean @default(false)
-  balcony        Boolean @default(false)
-  freeWiFi       Boolean @default(false)
-  cityView       Boolean @default(false)
-  oceanView      Boolean @default(false)
-  forestView     Boolean @default(false)
-  mountainView   Boolean @default(false)
-  airCondition   Boolean @default(false)
-  soundProofed   Boolean @default(false)
-
-  Hotel   Hotel?  @relation("HotelRooms", fields: [hotelId], references: [id], onDelete: Cascade)
-  hotelId String?
-
-  Booking Booking[] @relation("RoomBookings")
-
-  @@index([hotelId])
+  roomService    Boolean   @default(false)
+  TV             Boolean   @default(false)
+  balcony        Boolean   @default(false)
+  freeWiFi       Boolean   @default(false)
+  cityView       Boolean   @default(false)
+  oceanView      Boolean   @default(false)
+  forestView     Boolean   @default(false)
+  mountainView   Boolean   @default(false)
+  airCondition   Boolean   @default(false)
+  soundProofed   Boolean   @default(false)
+  quantity       Int       @default(1) // Thêm trường quantity, mặc định là 1
+  hotelId        String
+  hotel          Hotel     @relation("HotelRooms", fields: [hotelId], references: [id], onDelete: Cascade)
+  bookings       Booking[] @relation("RoomBookings")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
 
 model Booking {
-  id                String   @id @default(uuid())
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation("UserBookings", fields: [userId], references: [id], onDelete: Cascade)
   userName          String
   userEmail         String
-  userId            String
   roomId            String
+  room              Room     @relation("RoomBookings", fields: [roomId], references: [id], onDelete: Cascade)
   hotelId           String
+  hotel             Hotel    @relation("HotelBookings", fields: [hotelId], references: [id], onDelete: Cascade)
   hotelOwnerId      String
   startDate         DateTime
   endDate           DateTime
-  breakFastIncluded Boolean
+  breakFastIncluded Boolean  @default(false)
   currency          String
-  totalPrice        Int
+  totalPrice        Float
   paymentStatus     Boolean  @default(false)
   paymentIntentId   String   @unique
   bookedAt          DateTime @default(now())
+}
 
-  Hotel Hotel? @relation("HotelBookings", fields: [hotelId], references: [id])
-  Room  Room?  @relation("RoomBookings", fields: [roomId], references: [id])
+model Review {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hotelId   String
+  hotel     Hotel    @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  rating    Int // Điểm đánh giá (1-5)
+  comment   String   @db.Text // Nhận xét
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+}
 
-  @@index([hotelId])
-  @@index([roomId])
+enum GuideStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+model LocalGuide {
+  id           String         @id @default(cuid())
+  userId       String         @unique // Mỗi người dùng chỉ có thể đăng ký làm hướng dẫn viên một lần
+  user         User           @relation("UserLocalGuides", fields: [userId], references: [id], onDelete: Cascade)
+  name         String         @db.Text // Tên hiển thị của hướng dẫn viên
+  bio          String         @db.Text // Mô tả về hướng dẫn viên
+  languages    String[] // Ngôn ngữ hỗ trợ (ví dụ: ["English", "Vietnamese"])
+  specialties  String[] // Chuyên môn (ví dụ: ["Cultural Tours", "Food Tours", "Adventure Tours"])
+  pricePerDay  Float // Giá theo giờ
+  city         String // Thành phố hoạt động
+  phoneNumber  String? // Số điện thoại để liên lạc
+  email        String? // Email để liên lạc (có thể lấy từ User, nhưng để linh hoạt)
+  profileImage String? // Hình ảnh đại diện của hướng dẫn viên
+  rating       Float? // Điểm đánh giá trung bình
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  bookings     GuideBooking[] @relation("LocalGuideBookings")
+  reviews      GuideReview[]  @relation("LocalGuideReviews")
+}
+
+model GuideBooking {
+  id         String      @id @default(cuid())
+  userId     String
+  user       User        @relation("UserGuideBookings", fields: [userId], references: [id], onDelete: Cascade)
+  guideId    String
+  guide      LocalGuide  @relation("LocalGuideBookings", fields: [guideId], references: [id], onDelete: Cascade)
+  startTime  DateTime // Thời gian bắt đầu
+  endTime    DateTime // Thời gian kết thúc
+  totalPrice Float // Tổng giá
+  status     GuideStatus @default(PENDING) // Trạng thái: PENDING, CONFIRMED, CANCELLED, COMPLETED
+  notes      String?     @db.Text // Ghi chú từ khách hàng (ví dụ: "Gặp tại khách sạn")
+  bookedAt   DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+model GuideReview {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation("UserGuideReviews", fields: [userId], references: [id], onDelete: Cascade)
+  guideId   String
+  guide     LocalGuide @relation("LocalGuideReviews", fields: [guideId], references: [id], onDelete: Cascade)
+  rating    Int // Điểm đánh giá (1-5)
+  comment   String     @db.Text // Nhận xét
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 }

@@ -29,6 +29,7 @@ import {
   Trash,
   Edit,
   Wand2,
+  MapPin,
 } from "lucide-react";
 import { Separator } from "../ui/separator";
 import { usePathname, useRouter } from "next/navigation";
@@ -51,6 +52,7 @@ import { differenceInCalendarDays, eachDayOfInterval } from "date-fns";
 import { Checkbox } from "../ui/checkbox";
 import { useAuth } from "@clerk/nextjs";
 import useBookRoom from "@/hooks/useBookRoom";
+import attractionsData from "@/data/attractions.json"; // Import dữ liệu điểm tham quan
 
 interface RoomCardProps {
   hotel?: Hotel & {
@@ -58,6 +60,16 @@ interface RoomCardProps {
   };
   room: Room;
   bookings?: Booking[];
+}
+
+interface Attraction {
+  name: string;
+  description: string;
+  type: string;
+}
+
+interface AttractionsData {
+  [city: string]: Attraction[];
 }
 
 const AmenityItem = ({ children }: { children: React.ReactNode }) => (
@@ -69,15 +81,41 @@ const formatPrice = (price: number) => {
   return price.toLocaleString("vi-VN", { style: "currency", currency: "VND" });
 };
 
+// Hàm chuẩn hóa tên thành phố
+const normalizeCityName = (city: string | undefined): string => {
+  if (!city) return "";
+  // Loại bỏ "Thành Phố " và chuẩn hóa về chữ thường để so sánh
+  return city
+    .replace(/^Thành Phố\s+/i, "")
+    .trim()
+    .toLowerCase();
+};
+
+// Hàm ánh xạ loại điểm tham quan sang icon
+const getAttractionIcon = (type: string) => {
+  switch (type) {
+    case "sightseeing":
+      return <MapPin className="h-4 w-4 text-blue-600" />;
+    case "beach":
+      return <Waves className="h-4 w-4 text-blue-600" />;
+    case "shopping":
+      return <Building className="h-4 w-4 text-blue-600" />;
+    case "dining":
+      return <UtensilsCrossed className="h-4 w-4 text-blue-600" />;
+    default:
+      return <MapPin className="h-4 w-4 text-blue-600" />;
+  }
+};
+
 // UI NEEEEEE
 const RoomCard = ({ hotel, room, bookings = [] }: RoomCardProps) => {
-  console.log("Room:", room);
   const { setRoomData, paymentIntentId, setClientSecret, setPaymentIntentId } =
     useBookRoom();
 
   const [isLoading, setIsLoading] = useState(false);
   const [bookingIsLoading, setBookingIsLoading] = useState(false);
   const [open, setOpen] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false); // State để mở dialog đề xuất
   const pathName = usePathname();
   const router = useRouter();
   const isHotelDetailsPage = pathName.includes("hotel-details");
@@ -88,6 +126,19 @@ const RoomCard = ({ hotel, room, bookings = [] }: RoomCardProps) => {
   const isBookRoom = pathName.includes("book-room");
 
   const { userId } = useAuth();
+
+  // Chuẩn hóa tên thành phố từ hotel.city
+  const normalizedCity = normalizeCityName(hotel?.city);
+
+  // Tìm key khớp với normalizedCity trong attractionsData (không phân biệt hoa/thường)
+  const cityKey = Object.keys(attractionsData as AttractionsData).find(
+    (key) => normalizeCityName(key) === normalizedCity
+  );
+
+  // Lấy danh sách điểm tham quan dựa trên thành phố đã chuẩn hóa
+  const cityAttractions = cityKey
+    ? (attractionsData as AttractionsData)[cityKey] || []
+    : [];
 
   const disabledDates = useMemo(() => {
     let dates: Date[] = [];
@@ -337,10 +388,13 @@ const RoomCard = ({ hotel, room, bookings = [] }: RoomCardProps) => {
             return;
           }
           // Thêm thông báo thành công bằng toast
-          toast.success("Đặt phòng thành công! Đang chuyển hướng...");
+          toast.success(
+            "Đặt phòng thành công! Xem gợi ý lịch trình của bạn..."
+          );
           setClientSecret(data.paymentIntent.client_secret);
           setPaymentIntentId(data.paymentIntent.id);
-          router.push("/book-room");
+          // Mở dialog gợi ý lịch trình thay vì chuyển hướng ngay
+          setShowSuggestions(true);
         })
         .catch((error: any) => {
           console.log("Error:", error);
@@ -351,156 +405,216 @@ const RoomCard = ({ hotel, room, bookings = [] }: RoomCardProps) => {
     }
   };
 
+  const handleProceedToPayment = () => {
+    setShowSuggestions(false); // Đóng dialog gợi ý
+    router.push("/book-room"); // Chuyển hướng đến trang thanh toán
+  };
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{room.title}</CardTitle>
-        <CardDescription>{room.description}</CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        <div className="aspect-square overflow-hidden relative h-[200px] rounded-lg">
-          <Image
-            fill
-            src={room.image}
-            alt={room.title}
-            className="object-cover"
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-4 content-start text-[13px]">
-          {Array.isArray(visibleAmenities) && visibleAmenities.length > 0 ? (
-            visibleAmenities.map((amenity, index) => (
-              <AmenityItem key={index}>
-                {amenity.icon}
-                {amenity.label}
-              </AmenityItem>
-            ))
-          ) : (
-            <div className="col-span-2 text-center text-gray-500">
-              Không có tiện ích nào
-            </div>
-          )}
-        </div>
-        <Separator />
-        <div className="flex flex-col justify-between text-[13px]">
-          {!!room.breakFastPrice && (
-            <div>
-              Bữa sáng:{" "}
-              <span className="font-bold text-red-600">
-                {formatPrice(room.breakFastPrice)}
-              </span>
-            </div>
-          )}
-          <Separator className="my-2" />
-          <div className="mt-2">
-            Giá phòng:{" "}
-            <span className="font-bold text-red-600">
-              {formatPrice(room.roomPrice)}
-            </span>{" "}
-            <span>/ 24h</span>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>{room.title}</CardTitle>
+          <CardDescription>{room.description}</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="aspect-square overflow-hidden relative h-[200px] rounded-lg">
+            <Image
+              fill
+              src={room.image}
+              alt={room.title}
+              className="object-cover"
+            />
           </div>
-        </div>
-      </CardContent>
-      {!isBookRoom && (
-        <CardFooter>
-          {isHotelDetailsPage ? (
-            <div className="flex flex-col gap-6">
-              <div>
-                <div className="mb-2">Chọn ngày bạn muốn thuê</div>
-                <DateRangePicker
-                  date={date}
-                  setDate={setDate}
-                  disabledDates={disabledDates}
-                />
+          <div className="grid grid-cols-2 gap-4 content-start text-[13px]">
+            {Array.isArray(visibleAmenities) && visibleAmenities.length > 0 ? (
+              visibleAmenities.map((amenity, index) => (
+                <AmenityItem key={index}>
+                  {amenity.icon}
+                  {amenity.label}
+                </AmenityItem>
+              ))
+            ) : (
+              <div className="col-span-2 text-center text-gray-500">
+                Không có tiện ích nào
               </div>
-              {room.breakFastPrice > 0 && (
-                <div className="mb-4">
-                  <div className="mb-2">Bạn có muốn được phục vụ bữa sáng?</div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="breakFast"
-                      checked={includeBreakFast}
-                      onCheckedChange={(value) => setIncludeBreakFast(!!value)}
-                    />
-                    <label
-                      htmlFor="breakFast"
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            )}
+          </div>
+          <Separator />
+          <div className="flex flex-col justify-between text-[13px]">
+            {!!room.breakFastPrice && (
+              <div>
+                Bữa sáng:{" "}
+                <span className="font-bold text-red-600">
+                  {formatPrice(room.breakFastPrice)}
+                </span>
+              </div>
+            )}
+            <Separator className="my-2" />
+            <div className="mt-2">
+              Giá phòng:{" "}
+              <span className="font-bold text-red-600">
+                {formatPrice(room.roomPrice)}
+              </span>{" "}
+              <span>/ 24h</span>
+            </div>
+          </div>
+        </CardContent>
+        {!isBookRoom && (
+          <CardFooter>
+            {isHotelDetailsPage ? (
+              <div className="flex flex-col gap-6 w-full">
+                <div>
+                  <div className="mb-2">Chọn ngày bạn muốn thuê</div>
+                  <DateRangePicker
+                    date={date}
+                    setDate={setDate}
+                    disabledDates={disabledDates}
+                  />
+                </div>
+                {room.breakFastPrice > 0 && (
+                  <div className="mb-4">
+                    <div className="mb-2">
+                      Bạn có muốn được phục vụ bữa sáng?
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="breakFast"
+                        checked={includeBreakFast}
+                        onCheckedChange={(value) =>
+                          setIncludeBreakFast(!!value)
+                        }
+                      />
+                      <label
+                        htmlFor="breakFast"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        Gồm bữa sáng (+{formatPrice(room.breakFastPrice)}/ngày)
+                      </label>
+                    </div>
+                  </div>
+                )}
+                <div>
+                  Tổng cộng:{" "}
+                  <span className="font-bold">{formatPrice(totalPrice)}</span>{" "}
+                  cho <span className="font-bold">{days} Ngày</span>
+                </div>
+                <div className="flex justify-center">
+                  <Button
+                    onClick={() => handleBookRoom()}
+                    disabled={bookingIsLoading}
+                    type="button"
+                    className="cursor-pointer w-full"
+                  >
+                    {bookingIsLoading ? (
+                      <Loader2 className="mr-2 h-4 w-4" />
+                    ) : (
+                      <Wand2 className="mr-2 h-4 w-4" />
+                    )}
+                    {bookingIsLoading ? "Đang tải..." : "Đặt phòng"}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex w-full justify-between">
+                <Button
+                  disabled={isLoading}
+                  type="button"
+                  variant="ghost"
+                  className="cursor-pointer"
+                  onClick={() => {
+                    handleRoomDelete(room);
+                  }}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4" />
+                      Đang xóa...
+                    </>
+                  ) : (
+                    <>
+                      <Trash className="mr-2 h-4 w-4" /> Xóa
+                    </>
+                  )}
+                </Button>
+                <Dialog open={open} onOpenChange={setOpen}>
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      type="button"
+                      className="cursor-pointer"
                     >
-                      Gồm bữa sáng (+{formatPrice(room.breakFastPrice)}/ngày)
-                    </label>
+                      <Edit className="mr-2 h-4 w-4" />
+                      Cập nhật
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-[900px] w-[90%]">
+                    <DialogHeader className="px-2">
+                      <DialogTitle>Cập Nhật Phòng</DialogTitle>
+                      <DialogDescription>
+                        Thay đổi chi tiết của phòng này
+                      </DialogDescription>
+                    </DialogHeader>
+                    <AddRoomForm
+                      hotel={hotel}
+                      room={room}
+                      handleDialogueOpen={handleDialogueOpen}
+                    />
+                  </DialogContent>
+                </Dialog>
+              </div>
+            )}
+          </CardFooter>
+        )}
+      </Card>
+
+      {/* Dialog gợi ý lịch trình */}
+      <Dialog open={showSuggestions} onOpenChange={setShowSuggestions}>
+        <DialogContent className="max-w-[600px] w-[90%]">
+          <DialogHeader>
+            <DialogTitle>Gợi ý lịch trình tại {hotel?.city}</DialogTitle>
+            <DialogDescription>
+              Dưới đây là một số địa điểm bạn có thể tham quan trong chuyến đi
+              của mình!
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[400px] overflow-y-auto space-y-4 p-4">
+            {cityAttractions.length > 0 ? (
+              cityAttractions.map((attraction: Attraction, index: number) => (
+                <div
+                  key={index}
+                  className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg shadow-sm"
+                >
+                  <div className="mt-1">
+                    {getAttractionIcon(attraction.type)}
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-800">
+                      {attraction.name}
+                    </h4>
+                    <p className="text-xs text-gray-600">
+                      {attraction.description}
+                    </p>
                   </div>
                 </div>
-              )}
-              <div>
-                Tổng cộng:{" "}
-                <span className="font-bold">{formatPrice(totalPrice)}</span> cho{" "}
-                <span className="font-bold">{days} Ngày</span>
-              </div>
-              <Button
-                onClick={() => handleBookRoom()}
-                disabled={bookingIsLoading}
-                type="button"
-                className="cursor-pointer"
-              >
-                {bookingIsLoading ? (
-                  <Loader2 className="mr-2 h-4 w-4" />
-                ) : (
-                  <Wand2 className="mr-2 h-4 w-4" />
-                )}
-                {bookingIsLoading ? "Đang tải..." : "Đặt phòng"}
-              </Button>
-            </div>
-          ) : (
-            <div className="flex w-full justify-between">
-              <Button
-                disabled={isLoading}
-                type="button"
-                variant="ghost"
-                className="cursor-pointer"
-                onClick={() => {
-                  handleRoomDelete(room);
-                }}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4" />
-                    Đang xóa...
-                  </>
-                ) : (
-                  <>
-                    <Trash className="mr-2 h-4 w-4" /> Xóa
-                  </>
-                )}
-              </Button>
-              <Dialog open={open} onOpenChange={setOpen}>
-                <DialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    type="button"
-                    className="cursor-pointer"
-                  >
-                    <Edit className="mr-2 h-4 w-4" />
-                    Cập nhật
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-[900px] w-[90%]">
-                  <DialogHeader className="px-2">
-                    <DialogTitle>Cập Nhật Phòng</DialogTitle>
-                    <DialogDescription>
-                      Thay đổi chi tiết của phòng này
-                    </DialogDescription>
-                  </DialogHeader>
-                  <AddRoomForm
-                    hotel={hotel}
-                    room={room}
-                    handleDialogueOpen={handleDialogueOpen}
-                  />
-                </DialogContent>
-              </Dialog>
-            </div>
-          )}
-        </CardFooter>
-      )}
-    </Card>
+              ))
+            ) : (
+              <p className="text-sm text-gray-500">
+                Hiện tại chưa có gợi ý lịch trình cho thành phố này.
+              </p>
+            )}
+          </div>
+          <div className="flex justify-end mt-4">
+            <Button
+              onClick={handleProceedToPayment}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              Tiến hành thanh toán
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 

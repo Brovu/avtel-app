@@ -1,4 +1,4 @@
-import { getBookingsByHotelOwnerId } from "@/actions/getBookingsByHotelOwnerld";
+import { getBookingsByHotelOwnerId } from "@/actions/getBookingsByHotelOwnerId";
 import { getBookingsByUserId } from "@/actions/getBookingsByUserId";
 import MyBookingsClient from "@/components/booking/MyBookingsClient";
 

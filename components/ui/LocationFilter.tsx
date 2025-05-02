@@ -10,7 +10,7 @@ import {
 } from "./select";
 import Container from "../Container";
 import useLocation from "@/hooks/useLocation";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import qs from "query-string";
 import { toast } from "sonner";
 import { Button } from "./button";
@@ -18,107 +18,116 @@ import { Button } from "./button";
 const LocationFilter = () => {
   const router = useRouter();
   const params = useSearchParams();
+  const pathname = usePathname();
 
-  // Khởi tạo state từ URL
-  const [country, setCountry] = useState(params.get("country") || "");
-  const [state, setState] = useState(params.get("state") || "");
-  const [city, setCity] = useState(params.get("city") || "");
+  const isHomePage = pathname === "/";
+
+  // State cho các bộ lọc vị trí
+  const [country, setCountry] = useState(
+    isHomePage ? params.get("country") || "" : ""
+  );
+  const [state, setState] = useState(
+    isHomePage ? params.get("state") || "" : ""
+  );
+  const [city, setCity] = useState(isHomePage ? params.get("city") || "" : "");
+
+  // State cho sắp xếp theo giá
+  const [sortPrice, setSortPrice] = useState(
+    isHomePage ? params.get("sortPrice") || "" : ""
+  );
 
   const { getAllCountries, getCountryStates, getStateCities } = useLocation();
 
-  // Lấy danh sách quốc gia
   const countries = getAllCountries;
-
-  // Lấy danh sách bang/tỉnh dựa trên quốc gia
   const states = country ? getCountryStates(country) : [];
-
-  // Lấy danh sách thành phố dựa trên quốc gia và bang/tỉnh
   const cities = country && state ? getStateCities(country, state) : [];
+
+  // Reset filter khi rời khỏi trang chính
+  useEffect(() => {
+    if (!isHomePage) {
+      setCountry("");
+      setState("");
+      setCity("");
+      setSortPrice(""); // Reset sortPrice
+    }
+  }, [isHomePage]);
 
   // Đặt lại state và city khi quốc gia thay đổi
   useEffect(() => {
+    if (!isHomePage) return;
+
     const countryStates = getCountryStates(country);
     if (countryStates) {
       setState("");
       setCity("");
     }
-  }, [country]);
+  }, [country, isHomePage]);
 
   // Đặt lại city khi bang/tỉnh thay đổi
   useEffect(() => {
+    if (!isHomePage) return;
+
     const stateCities = getStateCities(country, state);
     if (stateCities) {
       setCity("");
     }
-  }, [country, state]);
+  }, [country, state, isHomePage]);
 
   // Lưu các giá trị vào URL
   useEffect(() => {
-    // Nếu tất cả đều rỗng, điều hướng về trang mặc định
-    if (country === "" && state === "" && city === "") {
-      router.push("/");
-      return;
-    }
+    if (!isHomePage) return;
 
-    // Lấy query string hiện tại
     let currentQuery: any = {};
     if (params) {
       currentQuery = qs.parse(params.toString());
     }
 
-    // Cập nhật query string với các giá trị mới
     if (country) {
-      currentQuery = {
-        ...currentQuery,
-        country,
-      };
-    }
-    if (state) {
-      currentQuery = {
-        ...currentQuery,
-        state,
-      };
-    }
-    if (city) {
-      currentQuery = {
-        ...currentQuery,
-        city,
-      };
-    }
-
-    // Xóa các tham số nếu chúng rỗng
-    if (country === "" && currentQuery.country) {
+      currentQuery.country = country;
+    } else {
       delete currentQuery.country;
     }
-    if (state === "" && currentQuery.state) {
+
+    if (state) {
+      currentQuery.state = state;
+    } else {
       delete currentQuery.state;
     }
-    if (city === "" && currentQuery.city) {
+
+    if (city) {
+      currentQuery.city = city;
+    } else {
       delete currentQuery.city;
     }
 
-    // Tạo URL mới
+    if (sortPrice) {
+      currentQuery.sortPrice = sortPrice; // Thêm sortPrice vào query
+    } else {
+      delete currentQuery.sortPrice;
+    }
+
     const url = qs.stringifyUrl(
       {
-        url: "/", // Điều hướng đến trang danh sách khách sạn
+        url: "/",
         query: currentQuery,
       },
       { skipNull: true, skipEmptyString: true }
     );
 
-    // Chỉ cập nhật URL nếu có sự thay đổi
     if (url !== window.location.pathname + window.location.search) {
-      router.push(url);
-      toast.success("Đã tìm ra điểm đến của bạn!");
+      router.replace(url, { scroll: false });
     }
-  }, [country, state, city, params, router]);
+  }, [country, state, city, sortPrice, params, router, isHomePage]);
 
   const handleClearFilter = () => {
-    router.push("/");
     setCountry("");
     setState("");
     setCity("");
+    setSortPrice(""); // Reset sortPrice
+    router.push("/", { scroll: false });
   };
+
+  if (!isHomePage) return null;
 
   return (
     <Container>
@@ -144,7 +153,7 @@ const LocationFilter = () => {
           <Select
             onValueChange={(value) => setState(value)}
             value={state}
-            disabled={!country} // Disable nếu chưa chọn quốc gia
+            disabled={!country}
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Chọn bang/tỉnh" />
@@ -170,7 +179,7 @@ const LocationFilter = () => {
           <Select
             onValueChange={(value) => setCity(value)}
             value={city}
-            disabled={!country || !state} // Disable nếu chưa chọn quốc gia hoặc bang/tỉnh
+            disabled={!country || !state}
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Chọn thành phố" />
@@ -190,9 +199,26 @@ const LocationFilter = () => {
             </SelectContent>
           </Select>
         </div>
+
+        {/* Dropdown Sắp xếp theo giá */}
+        <div>
+          <Select
+            onValueChange={(value) => setSortPrice(value)}
+            value={sortPrice}
+          >
+            <SelectTrigger className="bg-background">
+              <SelectValue placeholder="Sắp xếp theo giá" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="asc">Giá: Tăng dần</SelectItem>
+              <SelectItem value="desc">Giá: Giảm dần</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         <Button
           className="cursor-pointer"
-          onClick={() => handleClearFilter()}
+          onClick={handleClearFilter}
           variant="outline"
         >
           Làm mới

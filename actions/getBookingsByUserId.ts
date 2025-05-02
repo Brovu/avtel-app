@@ -1,5 +1,5 @@
-import { auth } from "@clerk/nextjs";
 import prisma from "@/lib/prisma";
+import { auth } from "@clerk/nextjs/server";
 
 export const getBookingsByUserId = async () => {
   try {
@@ -11,21 +11,24 @@ export const getBookingsByUserId = async () => {
 
     const bookings = await prisma.booking.findMany({
       where: {
-        userId: userId, // Lọc theo userId thay vì hotelOwnerId
+        userId,
       },
       include: {
-        Room: true,
-        Hotel: true,
+        room: true,
+        hotel: true,
+        user: true,
       },
       orderBy: {
         bookedAt: "desc",
       },
     });
 
-    if (!bookings) return null;
+    // Log dữ liệu để kiểm tra
+    console.log("Bookings from getBookingsByUserId:", bookings);
+
     return bookings;
   } catch (error: any) {
-    console.error("Error fetching bookings:", error);
-    throw new Error(error.message || "Failed to fetch bookings");
+    console.error("Error in getBookingsByUserId:", error.message);
+    throw new Error(error.message);
   }
 };

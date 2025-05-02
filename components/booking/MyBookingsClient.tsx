@@ -34,7 +34,7 @@ import { toast } from "sonner";
 
 // Định nghĩa kiểu props
 interface MyBookingsClientProps {
-  booking: Booking & { Room: Room } & { Hotel: Hotel };
+  booking: Booking & { room: Room | null; hotel: Hotel | null };
 }
 
 const AmenityItem = ({ children }: { children: React.ReactNode }) => (
@@ -43,13 +43,12 @@ const AmenityItem = ({ children }: { children: React.ReactNode }) => (
 
 // Hàm định dạng giá tiền theo VND với dấu chấm ngăn cách
 const formatPrice = (price: number) => {
-  // Định dạng số với dấu chấm ngăn cách
   const formattedPrice = price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   return `${formattedPrice} VND`;
 };
 
 const MyBookingsClient: React.FC<MyBookingsClientProps> = ({ booking }) => {
-  const { Room, Hotel } = booking; // Sử dụng Room và Hotel từ booking
+  const { room, hotel } = booking;
 
   // Định dạng ngày tháng theo DD/MM/YYYY
   const startDate = moment(booking.startDate).format("DD/MM/YYYY");
@@ -57,8 +56,8 @@ const MyBookingsClient: React.FC<MyBookingsClientProps> = ({ booking }) => {
 
   // Lấy thông tin vị trí
   const { getCountryByCode, getStateByCode } = useLocation();
-  const country = getCountryByCode(Hotel?.country || "");
-  const state = getStateByCode(Hotel?.country || "", Hotel?.state || "");
+  const country = getCountryByCode(hotel?.country || "");
+  const state = getStateByCode(hotel?.country || "", hotel?.state || "");
   const location =
     state && country
       ? `${state.name}, ${country.name}`
@@ -72,15 +71,19 @@ const MyBookingsClient: React.FC<MyBookingsClientProps> = ({ booking }) => {
 
   // Hàm xử lý thanh toán
   const handlePayNow = async () => {
+    if (!room || !hotel) {
+      toast.error("Không thể thanh toán: Thiếu thông tin phòng hoặc khách sạn");
+      return;
+    }
+
     try {
-      // Lưu dữ liệu booking vào useBookRoom
       const bookingRoomData = {
         room: {
-          id: Room.id,
-          title: Room.title,
-          roomPrice: Room.roomPrice,
-          breakFastPrice: Room.breakFastPrice,
-          image: Room.image,
+          id: room.id,
+          title: room.title,
+          roomPrice: room.roomPrice,
+          breakFastPrice: room.breakFastPrice,
+          image: room.image,
         },
         totalPrice: booking.totalPrice,
         breakFastIncluded: booking.breakFastIncluded,
@@ -90,7 +93,6 @@ const MyBookingsClient: React.FC<MyBookingsClientProps> = ({ booking }) => {
 
       setRoomData(bookingRoomData);
 
-      // Gọi API để tạo paymentIntent
       const response = await fetch("/api/create-payment-intent", {
         method: "POST",
         headers: {
@@ -98,15 +100,15 @@ const MyBookingsClient: React.FC<MyBookingsClientProps> = ({ booking }) => {
         },
         body: JSON.stringify({
           booking: {
-            hotelOwnerId: Hotel.userId,
-            hotelId: Hotel.id,
-            roomId: Room.id,
+            hotelOwnerId: hotel.userId,
+            hotelId: hotel.id,
+            roomId: room.id,
             startDate: booking.startDate,
             endDate: booking.endDate,
             breakFastIncluded: booking.breakFastIncluded,
             totalPrice: booking.totalPrice,
           },
-          payment_intent_id: booking.paymentIntentId || "", // Sử dụng paymentIntentId hiện có nếu có
+          payment_intent_id: booking.paymentIntentId || "",
         }),
       });
 
@@ -131,11 +133,9 @@ const MyBookingsClient: React.FC<MyBookingsClientProps> = ({ booking }) => {
         return;
       }
 
-      // Lưu clientSecret và paymentIntentId
       setClientSecret(data.paymentIntent.client_secret);
       setPaymentIntentId(data.paymentIntent.id);
 
-      // Thông báo thành công và điều hướng
       toast.success("Chuẩn bị thanh toán... Đang chuyển hướng!");
       router.push("/book-room");
     } catch (error: any) {
@@ -147,67 +147,67 @@ const MyBookingsClient: React.FC<MyBookingsClientProps> = ({ booking }) => {
   // Danh sách tiện ích
   const amenities = [
     {
-      condition: true,
+      condition: room && typeof room.bedCount === "number",
       icon: <Bed className="h-4 w-4" />,
-      label: `${Room.bedCount} Giường`,
+      label: room ? `${room.bedCount} Giường` : "Không có thông tin",
     },
     {
-      condition: true,
+      condition: room && typeof room.guestCount === "number",
       icon: <User className="h-4 w-4" />,
-      label: `${Room.guestCount} Khách`,
+      label: room ? `${room.guestCount} Khách` : "Không có thông tin",
     },
     {
-      condition: true,
+      condition: room && typeof room.bathroomCount === "number",
       icon: <Bath className="h-4 w-4" />,
-      label: `${Room.bathroomCount} Phòng tắm`,
+      label: room ? `${room.bathroomCount} Phòng tắm` : "Không có thông tin",
     },
     {
-      condition: !!Room.kingBed,
+      condition: room && typeof room.kingBed === "number" && room.kingBed > 0,
       icon: <BedDouble className="h-4 w-4" />,
-      label: `${Room.kingBed} Giường King`,
+      label: room ? `${room.kingBed} Giường King` : "Không có thông tin",
     },
     {
-      condition: !!Room.queenBed,
+      condition: room && typeof room.queenBen === "number" && room.queenBen > 0,
       icon: <BedDouble className="h-4 w-4" />,
-      label: `${Room.queenBed} Giường Queen`,
+      label: room ? `${room.queenBen} Giường Queen` : "Không có thông tin",
     },
     {
-      condition: !!Room.roomService,
+      condition: room && room.roomService === true,
       icon: <UtensilsCrossed className="h-4 w-4" />,
       label: "Dịch vụ phòng",
     },
     {
-      condition: !!Room.freeWifi,
+      condition: room && room.freeWiFi === true,
       icon: <Wifi className="h-4 w-4" />,
       label: "Wifi miễn phí",
     },
     {
-      condition: !!Room.cityView,
+      condition: room && room.cityView === true,
       icon: <Building className="h-4 w-4" />,
       label: "View thành phố",
     },
     {
-      condition: !!Room.oceanView,
+      condition: room && room.oceanView === true,
       icon: <Waves className="h-4 w-4" />,
       label: "View biển",
     },
     {
-      condition: !!Room.forestView,
+      condition: room && room.forestView === true,
       icon: <Trees className="h-4 w-4" />,
       label: "View rừng",
     },
     {
-      condition: !!Room.mountainView,
+      condition: room && room.mountainView === true,
       icon: <Mountain className="h-4 w-4" />,
       label: "View núi",
     },
     {
-      condition: !!Room.airCondition,
+      condition: room && room.airCondition === true,
       icon: <AirVent className="h-4 w-4" />,
       label: "Máy lạnh",
     },
     {
-      condition: !!Room.soundProofed,
+      condition: room && room.soundProofed === true,
       icon: <VolumeX className="h-4 w-4" />,
       label: "Cách âm",
     },
@@ -220,17 +220,20 @@ const MyBookingsClient: React.FC<MyBookingsClientProps> = ({ booking }) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{Room.title}</CardTitle>
+        <CardTitle>{room?.title || "Phòng không xác định"}</CardTitle>
         <CardDescription>
-          {Hotel.title} - {Room.description}
+          {hotel?.title || "Khách sạn không xác định"} -{" "}
+          {room?.description || "Không có mô tả"}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <div className="aspect-square overflow-hidden relative h-[200px] rounded-lg">
           <Image
             fill
-            src={Room.image}
-            alt={Room.title}
+            src={
+              room?.image || "https://via.placeholder.com/200x200?text=No+Image"
+            }
+            alt={room?.title || "Phòng không xác định"}
             className="object-cover"
           />
         </div>
@@ -267,17 +270,23 @@ const MyBookingsClient: React.FC<MyBookingsClientProps> = ({ booking }) => {
         <div className="flex justify-between text-sm">
           <div>
             Giá phòng:{" "}
-            <span className="font-bold">{formatPrice(Room.roomPrice)}</span> /
-            24h
+            <span className="font-bold">
+              {room && typeof room.roomPrice === "number"
+                ? formatPrice(room.roomPrice)
+                : "Không có thông tin"}{" "}
+              / 24h
+            </span>
           </div>
-          {!!Room.breakFastPrice && (
-            <div>
-              Giá bữa sáng:{" "}
-              <span className="font-bold">
-                {formatPrice(Room.breakFastPrice)}
-              </span>
-            </div>
-          )}
+          {room &&
+            typeof room.breakFastPrice === "number" &&
+            room.breakFastPrice > 0 && (
+              <div>
+                Giá bữa sáng:{" "}
+                <span className="font-bold">
+                  {formatPrice(room.breakFastPrice)}
+                </span>
+              </div>
+            )}
         </div>
         <div className="text-sm">
           Tổng giá:{" "}
@@ -289,7 +298,7 @@ const MyBookingsClient: React.FC<MyBookingsClientProps> = ({ booking }) => {
         <Button
           className="cursor-pointer"
           variant="outline"
-          onClick={() => router.push(`/hotel-details/${Hotel.id}`)}
+          onClick={() => router.push(`/hotel-details/${hotel?.id || ""}`)}
         >
           Xem chi tiết khách sạn
         </Button>

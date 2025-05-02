@@ -30,24 +30,32 @@ const NavBar = () => {
               <NavMenu />
             </div>
             <UserButton afterSignOutUrl="/" />
-            {!userId && (
+            {userId ? (
+              <Button
+                className="cursor-pointer"
+                onClick={() => router.push("/register-local-guide")}
+                variant="outline"
+                size="sm"
+              >
+                Đăng ký làm Hướng DV
+              </Button>
+            ) : (
               <>
-                {" "}
                 <Button
                   className="cursor-pointer"
                   onClick={() => router.push("/sign-in")}
                   variant="outline"
                   size="sm"
                 >
-                  Sign in
-                </Button>{" "}
+                  Đăng nhập
+                </Button>
                 <Button
                   className="cursor-pointer"
                   onClick={() => router.push("/sign-up")}
                   size="sm"
                 >
-                  Sign up
-                </Button>{" "}
+                  Đăng ký
+                </Button>
               </>
             )}
           </div>

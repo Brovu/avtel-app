@@ -1,0 +1,62 @@
+{
+  "cities": [
+    {
+      "name": "Đà Nẵng",
+      "aliases": ["đà nẵng", "da nang"]
+    },
+    {
+      "name": "Hà Nội",
+      "aliases": ["hà nội", "ha noi"]
+    },
+    {
+      "name": "Hồ Chí Minh",
+      "aliases": ["hồ chí minh", "ho chi minh", "sài gòn", "sai gon"]
+    },
+    {
+      "name": "Nha Trang",
+      "aliases": ["nha trang"]
+    },
+    {
+      "name": "Đà Lạt",
+      "aliases": ["đà lạt", "da lat"]
+    },
+    {
+      "name": "Huế",
+      "aliases": ["huế", "hue"]
+    },
+    {
+      "name": "Phú Quốc",
+      "aliases": ["phú quốc", "phu quoc"]
+    }
+  ],
+  "moods": [
+    {
+      "name": "lively",
+      "keywords": ["sôi động", "náo nhiệt", "vui vẻ"],
+      "amenities": ["bar", "movieNights"],
+      "descriptionKeywords": ["sôi động", "náo nhiệt"],
+      "displayName": "sôi động"
+    },
+    {
+      "name": "modern",
+      "keywords": ["hiện đại", "công nghệ", "tiện nghi"],
+      "amenities": ["freeWifi", "gym"],
+      "descriptionKeywords": ["hiện đại", "tiện nghi"],
+      "displayName": "hiện đại"
+    },
+    {
+      "name": "romantic",
+      "keywords": ["lãng mạn", "êm đềm", "dành cho cặp đôi"],
+      "amenities": ["coffeShop", "restaurant"],
+      "descriptionKeywords": ["lãng mạn", "êm đềm"],
+      "displayName": "lãng mạn"
+    },
+    {
+      "name": "relaxed",
+      "keywords": ["thư giãn", "yên tĩnh", "bình yên"],
+      "amenities": ["spa", "swimmingPool"],
+      "descriptionKeywords": ["yên tĩnh", "bình yên"],
+      "displayName": "thư giãn"
+    }
+  ]
+}

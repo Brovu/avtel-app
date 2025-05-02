@@ -1,7 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { BookOpenCheck, ChevronsUpDown, Hotel, Plus } from "lucide-react";
+import {
+  BookOpenCheck,
+  ChevronsUpDown,
+  Heart,
+  Hotel,
+  Plus,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -39,6 +45,12 @@ export function NavMenu() {
           onClick={() => router.push("/my-bookings")}
         >
           <BookOpenCheck size={15} /> <span>Booking</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="cursor-pointer flex gap-2 items-center"
+          onClick={() => router.push("/favorites")}
+        >
+          <Heart size={15} /> <span>Yêu thích</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -1,13 +1,13 @@
 import prisma from "@/lib/prisma";
-import { auth } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
 export async function GET(
   req: Request,
-  { params }: { params: { roomId: string } }
+  { params }: { params: Promise<{ roomId: string }> }
 ) {
   try {
-    const { roomId } = params;
+    const { roomId } = await params;
 
     if (!roomId) {
       return NextResponse.json({ message: "Thiếu roomId" }, { status: 400 });
@@ -26,7 +26,7 @@ export async function GET(
 
     return NextResponse.json(room);
   } catch (error: any) {
-    console.error("Error in /api/room/[roomId]:", error);
+    console.error("Error in /api/room/[roomId] GET:", error);
     return NextResponse.json(
       { message: "Lỗi server: " + error.message },
       { status: 500 }
@@ -36,14 +36,14 @@ export async function GET(
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { roomId: string } }
+  { params }: { params: Promise<{ roomId: string }> }
 ) {
-  const roomId = params.roomId;
+  const { roomId } = await params;
   console.log("PATCH request received for roomId:", roomId);
   try {
     const body = await req.json();
-    console.log("PATCH request body:", body); // Log dữ liệu nhận được
-    const { userId } = auth();
+    console.log("PATCH request body:", body);
+    const { userId } = await auth();
 
     if (!roomId) {
       return new NextResponse("Room ID is required", { status: 400 });
@@ -55,14 +55,14 @@ export async function PATCH(
     // Kiểm tra phòng tồn tại và quyền sở hữu khách sạn
     const room = await prisma.room.findUnique({
       where: { id: roomId },
-      include: { Hotel: { select: { userId: true } } },
+      include: { hotel: { select: { userId: true } } }, // Sửa Hotel thành hotel
     });
 
     if (!room) {
       return new NextResponse("Room not found", { status: 404 });
     }
 
-    if (!room.Hotel || room.Hotel.userId !== userId) {
+    if (!room.hotel || room.hotel.userId !== userId) {
       return new NextResponse("Forbidden: You do not own this hotel", {
         status: 403,
       });
@@ -76,19 +76,21 @@ export async function PATCH(
 
     console.log("Room updated successfully:", updatedRoom);
     return NextResponse.json(updatedRoom);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error in PATCH /api/room/[roomId]:", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    return new NextResponse("Internal Server Error: " + error.message, {
+      status: 500,
+    });
   }
 }
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { roomId: string } }
+  { params }: { params: Promise<{ roomId: string }> }
 ) {
   try {
-    const { userId } = auth();
-    const roomId = params.roomId;
+    const { userId } = await auth();
+    const { roomId } = await params;
 
     if (!userId) return new NextResponse("Unauthorized", { status: 401 });
     if (!roomId) return new NextResponse("Room ID Required", { status: 400 });
@@ -96,17 +98,17 @@ export async function DELETE(
     // Kiểm tra phòng tồn tại và thuộc về user
     const room = await prisma.room.findUnique({
       where: { id: roomId },
-      include: { Hotel: { select: { userId: true } } },
+      include: { hotel: { select: { userId: true } } }, // Sửa Hotel thành hotel
     });
 
     if (!room) return new NextResponse("Room Not Found", { status: 404 });
-    if (room.Hotel?.userId !== userId) {
+    if (room.hotel?.userId !== userId) {
       return new NextResponse("Forbidden", { status: 403 });
     }
 
     await prisma.room.delete({ where: { id: roomId } });
     return new NextResponse(null, { status: 204 });
-  } catch (error) {
+  } catch (error: any) {
     console.error("[ROOM_DELETE]", error);
     return new NextResponse("Internal Error", { status: 500 });
   }

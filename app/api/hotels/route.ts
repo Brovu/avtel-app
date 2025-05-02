@@ -1,34 +1,40 @@
 import prisma from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
 
-export async function getHotels(
-  params?: {
-    title?: string;
-    country?: string;
-    state?: string;
-    city?: string;
-    sortPrice?: string;
-    startDate?: string;
-    endDate?: string;
-  },
-  limit?: number,
-  page?: number
-) {
+export async function GET(req: Request) {
   try {
-    const { userId } = await auth(); // Lấy userId từ Clerk
+    const { userId } = auth(); // Lấy userId từ Clerk
+
+    const { searchParams } = new URL(req.url);
+    const title = searchParams.get("title") || undefined;
+    const country = searchParams.get("country") || undefined;
+    const state = searchParams.get("state") || undefined;
+    const city = searchParams.get("city") || undefined;
+    const sortPrice = searchParams.get("sortPrice") || undefined;
+    const startDate = searchParams.get("startDate") || undefined;
+    const endDate = searchParams.get("endDate") || undefined;
+    const limit = parseInt(searchParams.get("limit") || "6");
+    const page = parseInt(searchParams.get("page") || "1");
+    const amenity = searchParams.get("amenity") || undefined; // Thêm tham số amenity
 
     const where: any = {};
 
-    if (params?.title) {
+    if (title) {
       where.title = {
-        contains: params.title,
+        contains: title,
         mode: "insensitive",
       };
     }
 
-    if (params?.country) where.country = params.country;
-    if (params?.state) where.state = params.state;
-    if (params?.city) where.city = params.city;
+    if (country) where.country = country;
+    if (state) where.state = state;
+    if (city) where.city = city;
+
+    // Lọc theo tiện ích (amenity)
+    if (amenity) {
+      where[amenity] = true; // Lọc khách sạn có tiện ích tương ứng (ví dụ: where: { spa: true })
+    }
 
     const hotels = await prisma.hotel.findMany({
       where,
@@ -40,8 +46,8 @@ export async function getHotels(
         },
         reviews: true,
       },
-      take: limit || 6,
-      skip: page ? (page - 1) * (limit || 6) : 0,
+      take: limit,
+      skip: (page - 1) * limit,
       orderBy: {
         reviews: {
           _count: "desc",
@@ -51,12 +57,12 @@ export async function getHotels(
 
     // Lọc khách sạn có ít nhất một phòng khả dụng trong khoảng ngày
     const filteredHotels = hotels.filter((hotel) => {
-      if (!params?.startDate || !params?.endDate) {
+      if (!startDate || !endDate) {
         return true; // Nếu không có ngày, trả về tất cả khách sạn
       }
 
-      const startDate = new Date(params.startDate);
-      const endDate = new Date(params.endDate);
+      const start = new Date(startDate);
+      const end = new Date(endDate);
 
       // Kiểm tra từng phòng của khách sạn
       const availableRooms = hotel.rooms.filter((room) => {
@@ -65,7 +71,7 @@ export async function getHotels(
           if (!booking.paymentStatus) return false; // Chỉ tính các booking đã thanh toán
           const bookingStart = new Date(booking.startDate);
           const bookingEnd = new Date(booking.endDate);
-          return bookingStart <= endDate && bookingEnd >= startDate;
+          return bookingStart <= end && bookingEnd >= start;
         });
 
         // Phòng khả dụng nếu số lượng booking trùng nhỏ hơn quantity
@@ -115,11 +121,11 @@ export async function getHotels(
     );
 
     // Sắp xếp dựa trên sortPrice (nếu có), nếu không thì theo logic mặc định
-    if (params?.sortPrice) {
+    if (sortPrice) {
       hotelsWithRating.sort((a, b) => {
         const priceA = a.minPrice;
         const priceB = b.minPrice;
-        return params.sortPrice === "asc" ? priceA - priceB : priceB - priceA;
+        return sortPrice === "asc" ? priceA - priceB : priceB - priceA;
       });
     } else {
       hotelsWithRating.sort((a, b) => {
@@ -129,9 +135,12 @@ export async function getHotels(
       });
     }
 
-    return hotelsWithRating;
+    return NextResponse.json(hotelsWithRating);
   } catch (error) {
     console.error("Error getting hotels:", error);
-    throw error;
+    return NextResponse.json(
+      { message: "Lỗi server: " + (error as Error).message },
+      { status: 500 }
+    );
   }
 }

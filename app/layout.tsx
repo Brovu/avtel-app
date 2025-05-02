@@ -35,6 +35,7 @@ export default function RootLayout({
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
+          {/* Wrap toàn bộ ứng dụng trong BookingProvider */}
           <ThemeProvider
             attribute="class"
             defaultTheme="system"

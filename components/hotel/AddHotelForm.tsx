@@ -115,6 +115,10 @@ const AddHotelForm = ({ hotel }: AddHotelFormProps) => {
   const [createdHotel, setCreatedHotel] = useState<HotelWithRooms | null>(null);
   const [isHotelDeleting, setIsHotelDeleting] = useState(false);
   const [open, setOpen] = useState(false);
+  const [tempCoordinates, setTempCoordinates] = useState<{
+    lat?: number;
+    lng?: number;
+  }>({});
 
   const { getCountryByCode, getStateByCode, getCountryStates, getStateCities } =
     useLocation();
@@ -182,6 +186,80 @@ const AddHotelForm = ({ hotel }: AddHotelFormProps) => {
     form.setValue("city", selectedCity);
   }, [selectedCity, form]);
 
+  // Hàm gọi Nominatim API để lấy tọa độ từ địa chỉ
+  const getCoordinatesFromAddress = async (
+    address: string
+  ): Promise<{ lat: number; lng: number } | null> => {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+          address
+        )}`,
+        {
+          headers: {
+            "User-Agent": "HotelApp/1.0 (roy772003@gmail.com)", // Thay bằng email của bạn
+          },
+        }
+      );
+      const data = await response.json();
+
+      if (data && data.length > 0) {
+        const { lat, lon } = data[0];
+        return { lat: parseFloat(lat), lng: parseFloat(lon) };
+      } else {
+        console.error("Geocoding failed: No results found");
+        return null;
+      }
+    } catch (error) {
+      console.error("Error fetching coordinates:", error);
+      return null;
+    }
+  };
+
+  // Delay để tránh gọi API quá nhanh (giới hạn 1 yêu cầu/giây của Nominatim)
+  const delay = (ms: number) =>
+    new Promise((resolve) => setTimeout(resolve, ms));
+
+  // Lấy tọa độ tạm thời mỗi khi địa chỉ thay đổi
+  useEffect(() => {
+    const fetchCoordinates = async () => {
+      await delay(1000); // Đợi 1 giây để tránh vượt giới hạn Nominatim
+      const countryName =
+        Country.getAllCountries().find(
+          (c) => c.isoCode === form.getValues("country")
+        )?.name || form.getValues("country");
+      const stateName =
+        form.getValues("state") && form.getValues("country")
+          ? getCountryStates(form.getValues("country")).find(
+              (s) => s.isoCode === form.getValues("state")
+            )?.name || form.getValues("state")
+          : "";
+      const addressParts = [
+        form.getValues("locationDescription"),
+        form.getValues("city"),
+        stateName,
+        countryName,
+      ].filter(Boolean);
+      const address = addressParts.join(", ");
+
+      if (address) {
+        const coordinates = await getCoordinatesFromAddress(address);
+        if (coordinates) {
+          setTempCoordinates({ lat: coordinates.lat, lng: coordinates.lng });
+        } else {
+          setTempCoordinates({});
+        }
+      }
+    };
+
+    fetchCoordinates();
+  }, [
+    form.watch("country"),
+    form.watch("state"),
+    form.watch("city"),
+    form.watch("locationDescription"),
+  ]);
+
   async function handleDeleteImage() {
     if (!imageData.fileKey) {
       setImageData({ url: undefined, fileKey: undefined });
@@ -218,6 +296,7 @@ const AddHotelForm = ({ hotel }: AddHotelFormProps) => {
     setSelectedCountry("");
     setSelectedState("");
     setSelectedCity("");
+    setTempCoordinates({});
   };
 
   async function handleDeleteHotel(hotel: HotelWithRooms) {
@@ -259,9 +338,49 @@ const AddHotelForm = ({ hotel }: AddHotelFormProps) => {
     }
   }
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log("Hotel ID being updated:", hotel?.id);
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
+
+    // Tạo địa chỉ từ các trường
+    const countryName =
+      Country.getAllCountries().find((c) => c.isoCode === values.country)
+        ?.name || values.country;
+    const stateName =
+      values.state && values.country
+        ? getCountryStates(values.country).find(
+            (s) => s.isoCode === values.state
+          )?.name || values.state
+        : "";
+    const addressParts = [
+      values.locationDescription,
+      values.city,
+      stateName,
+      countryName,
+    ].filter(Boolean);
+    const address = addressParts.join(", ");
+
+    // Lấy tọa độ từ địa chỉ bằng Nominatim
+    let latitude: number | undefined;
+    let longitude: number | undefined;
+    if (address) {
+      const coordinates = await getCoordinatesFromAddress(address);
+      if (coordinates) {
+        latitude = coordinates.lat;
+        longitude = coordinates.lng;
+      } else {
+        toast.warning(
+          "Không thể lấy tọa độ từ địa chỉ. Vui lòng kiểm tra lại thông tin."
+        );
+      }
+    }
+
+    // Thêm tọa độ vào dữ liệu gửi lên API
+    const dataToSubmit = {
+      ...values,
+      latitude,
+      longitude,
+    };
+
     if (hotel) {
       if (!hotel.id) {
         toast.error("Hotel ID không hợp lệ!");
@@ -269,7 +388,7 @@ const AddHotelForm = ({ hotel }: AddHotelFormProps) => {
         return;
       }
       axios
-        .patch(`/api/hotel/${hotel.id}`, values)
+        .patch(`/api/hotel/${hotel.id}`, dataToSubmit)
         .then((res) => {
           toast.success("🎉 Khách sạn của bạn đã được cập nhật!");
           router.push(`/hotel/${res.data.id}`);
@@ -288,9 +407,10 @@ const AddHotelForm = ({ hotel }: AddHotelFormProps) => {
         });
     } else {
       axios
-        .post("/api/hotel", values)
+        .post("/api/hotel", dataToSubmit)
         .then((res) => {
           toast.success("🎉 Khách sạn của bạn đã được tạo!");
+          setCreatedHotel(res.data);
           router.push(`/hotel/${res.data.id}`);
           setIsLoading(false);
         })
@@ -548,6 +668,22 @@ const AddHotelForm = ({ hotel }: AddHotelFormProps) => {
                     </FormItem>
                   )}
                 />
+                {/* Hiển thị tọa độ tạm thời */}
+                <div className="mt-4">
+                  <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                    Tọa độ tự động lấy được:
+                  </h4>
+                  {tempCoordinates.lat && tempCoordinates.lng ? (
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Kinh độ: {tempCoordinates.lat}, Vĩ độ:{" "}
+                      {tempCoordinates.lng}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-gray-500">
+                      Chưa lấy được tọa độ. Vui lòng kiểm tra địa chỉ.
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
 
