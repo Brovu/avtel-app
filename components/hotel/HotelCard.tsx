@@ -77,18 +77,18 @@ const HotelCard = ({
     <div
       onClick={() => !isMyHotels && router.push(`/hotel-details/${hotel.id}`)}
       className={cn(
-        "col-span-1 cursor-pointer transition hover:scale-105",
+        "col-span-1 cursor-pointer transition hover:scale-105 rounded-lg overflow-hidden border border-primary/10",
         isMyHotels && "cursor-default"
       )}
     >
-      <div className="relative flex gap-2 bg-background/50 border border-primary/10 rounded-lg">
+      <div className="relative flex flex-col h-[320px] bg-background/50">
         {/* Icon trái tim */}
         <button
           onClick={(e) => {
-            e.stopPropagation(); // Ngăn sự kiện click lan ra thẻ cha
+            e.stopPropagation();
             handleFavoriteClick();
           }}
-          className="absolute top-2 right-2 p-1 rounded-full bg-white/80 hover:bg-white"
+          className="absolute top-2 right-2 p-1 rounded-full bg-white/80 hover:bg-white z-10"
         >
           <Heart
             className={cn(
@@ -98,7 +98,8 @@ const HotelCard = ({
           />
         </button>
 
-        <div className="flex-1 aspect-square overflow-hidden relative w-full h-[210px] rounded-s-lg">
+        {/* Hình ảnh */}
+        <div className="relative w-full h-[180px] overflow-hidden">
           <Image
             fill
             src={hotel.image}
@@ -106,80 +107,85 @@ const HotelCard = ({
             className="w-full h-full object-cover"
           />
         </div>
-        <div className="flex-1 flex flex-col justify-between h-[210px] gap-1 px-4 py-4 text-sm">
-          <h3 className="font-semibold text-[15px]">{hotel.title}</h3>
-          <div className="text-primary/90 text-[13px]">
-            {hotel.description.substring(0, 45)}...
-          </div>
-          <div className="text-primary/90">
-            <AmenityItem>
-              <MapPin className="w-4 h-4" />{" "}
-              <span className="text-[12px]">
-                {country?.name} / {hotel.city}
-              </span>
-            </AmenityItem>
-            {hotel.swimmingPool && (
-              <AmenityItem>
-                <Waves className="w-4 h-4" />{" "}
-                <span className="text-[12px]">Pool</span>
-              </AmenityItem>
-            )}
-            {hotel.gym && (
-              <AmenityItem>
-                <Dumbbell className="w-4 h-4" />{" "}
-                <span className="text-[12px]">Gym</span>
-              </AmenityItem>
-            )}
 
-            <div className="mt-2 flex items-center gap-1">
+        {/* Nội dung */}
+        <div className="flex-1 p-3 flex flex-col justify-between">
+          <div>
+            <h3 className="font-semibold text-[14px] line-clamp-1">
+              {hotel.title}
+            </h3>
+            <p className="text-primary/90 text-[12px] line-clamp-1">
+              {hotel.description.substring(0, 45)}...
+            </p>
+            <div className="text-primary/90 mt-1 flex flex-wrap gap-1">
+              <AmenityItem>
+                <MapPin className="w-4 h-4" />
+                <span className="text-[11px]">
+                  {country?.name} / {hotel.city}
+                </span>
+              </AmenityItem>
+              {hotel.swimmingPool && (
+                <AmenityItem>
+                  <Waves className="w-4 h-4" />
+                  <span className="text-[11px]">Pool</span>
+                </AmenityItem>
+              )}
+              {hotel.gym && (
+                <AmenityItem>
+                  <Dumbbell className="w-4 h-4" />
+                  <span className="text-[11px]">Gym</span>
+                </AmenityItem>
+              )}
+            </div>
+            <div className="mt-1 flex items-center gap-1">
               {averageRating > 0 ? (
                 <>
-                  <span className="font-semibold text-[13px]">
+                  <span className="font-semibold text-[12px]">
                     {averageRating}
                   </span>
                   <span className="text-yellow-500">
                     {"★".repeat(Math.round(averageRating))}
                   </span>
-                  <span className="text-gray-500 text-[12px]">
+                  <span className="text-gray-500 text-[11px]">
                     ({totalReviews} {totalReviews === 1 ? "review" : "reviews"})
                   </span>
                 </>
               ) : (
-                <span className="text-gray-500 text-[12px]">
+                <span className="text-gray-500 text-[11px]">
                   Chưa có đánh giá
                 </span>
               )}
             </div>
-
-            <div className="flex items-center justify-between w-full">
-              <div className="flex flex-col">
-                {hotel?.rooms[0]?.roomPrice && (
-                  <>
-                    <div className="font-semibold text-base">
-                      ${convertVNDtoUSD(hotel.rooms[0].roomPrice)}
-                      <span className="text-xs font-normal ml-1">/ 24hrs</span>
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {formattedPrice} VND
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {isMyHotels && (
-                <Button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    router.push(`/hotel/${hotel.id}`);
-                  }}
-                  variant="outline"
-                  size="sm"
-                  className="ml-4 self-end cursor-pointer"
-                >
-                  Sửa
-                </Button>
+          </div>
+          <div className="mt-1 flex items-center justify-between">
+            <div className="flex flex-col">
+              {hotel?.rooms[0]?.roomPrice && (
+                <>
+                  <div className="font-semibold text-[14px]">
+                    ${convertVNDtoUSD(hotel.rooms[0].roomPrice)}
+                    <span className="text-[10px] font-normal ml-1">
+                      / 24hrs
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-gray-500">
+                    {formattedPrice} VND
+                  </div>
+                </>
               )}
             </div>
+            {isMyHotels && (
+              <Button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  router.push(`/hotel/${hotel.id}`);
+                }}
+                variant="outline"
+                size="sm"
+                className="ml-2 self-end cursor-pointer text-[12px] py-1 px-2"
+              >
+                Sửa
+              </Button>
+            )}
           </div>
         </div>
       </div>

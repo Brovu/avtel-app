@@ -144,6 +144,35 @@ const MyBookingsClient: React.FC<MyBookingsClientProps> = ({ booking }) => {
     }
   };
 
+  // Hàm xử lý hủy đặt phòng
+  const handleCancelBooking = async () => {
+    if (!booking.paymentIntentId) {
+      toast.error("Không tìm thấy thông tin đặt phòng để hủy");
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/booking/${booking.paymentIntentId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `Lỗi khi hủy đặt phòng: ${response.status} - ${
+            errorText || "Không có thông tin chi tiết"
+          }`
+        );
+      }
+
+      toast.success("Đặt phòng đã được hủy thành công!");
+      router.refresh(); // Làm mới trang để cập nhật danh sách đặt phòng
+    } catch (error: any) {
+      console.error("Error cancelling booking:", error);
+      toast.error(`Có lỗi khi hủy: ${error.message}`);
+    }
+  };
+
   // Danh sách tiện ích
   const amenities = [
     {
@@ -294,7 +323,7 @@ const MyBookingsClient: React.FC<MyBookingsClientProps> = ({ booking }) => {
         </div>
         <div className="text-sm">Vị trí: {location}</div>
       </CardContent>
-      <CardFooter className="flex justify-between">
+      <CardFooter className="flex justify-between flex-wrap gap-2">
         <Button
           className="cursor-pointer"
           variant="outline"
@@ -303,9 +332,18 @@ const MyBookingsClient: React.FC<MyBookingsClientProps> = ({ booking }) => {
           Xem chi tiết khách sạn
         </Button>
         {!booking.paymentStatus && (
-          <Button className="cursor-pointer" onClick={handlePayNow}>
-            Thanh toán ngay
-          </Button>
+          <>
+            <Button className="cursor-pointer" onClick={handlePayNow}>
+              Thanh toán ngay
+            </Button>
+            <Button
+              className="cursor-pointer"
+              variant="destructive"
+              onClick={handleCancelBooking}
+            >
+              Hủy đặt phòng
+            </Button>
+          </>
         )}
       </CardFooter>
     </Card>
